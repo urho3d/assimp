@@ -46,7 +46,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../include/assimp/IOStream.hpp"
 #include "../include/assimp/IOSystem.hpp"
 #include "../include/assimp/ai_assert.h"
+// Urho3D: VS2008 compatibility
+#if !defined(_MSC_VER) || (_MSC_VER >= 1600)
 #include <stdint.h>
+#else
+#include "../include/assimp/Compiler/pstdint.h"
+#endif
 
 namespace Assimp    {
 #define AI_MEMORYIO_MAGIC_FILENAME "$$$___magic___$$$"

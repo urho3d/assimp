@@ -48,7 +48,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../include/assimp/types.h"
 #include "../include/assimp/mesh.h"
 #include "../include/assimp/anim.h"
+// Urho3D: VS2008 compatibility
+#if !defined(_MSC_VER) || (_MSC_VER >= 1600)
 #include <stdint.h>
+#else
+#include "../include/assimp/Compiler/pstdint.h"
+#endif
 
 #include "./../include/assimp/Compiler/pushpack1.h"
 

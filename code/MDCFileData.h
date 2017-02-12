@@ -54,7 +54,12 @@ http://themdcfile.planetwolfenstein.gamespy.com/MDC_File_Format.pdf
 #include "../include/assimp/anim.h"
 
 #include "./../include/assimp/Compiler/pushpack1.h"
+// Urho3D: VS2008 compatibility
+#if !defined(_MSC_VER) || (_MSC_VER >= 1600)
 #include <stdint.h>
+#else
+#include "../include/assimp/Compiler/pstdint.h"
+#endif
 
 namespace Assimp {
 namespace MDC {
