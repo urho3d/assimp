@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ----------------------------------------------------------------------
 */
+
 /** @file  FBXBinaryTokenizer.cpp
  *  @brief Implementation of a fake lexer for binary fbx files -
  *    we emit tokens so the parser needs almost no special handling
