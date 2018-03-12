@@ -43,7 +43,9 @@
 # 3) Add libassimp using the file lists (eliminates duplication of file names between
 #    source groups and library command)
 #
-cmake_minimum_required( VERSION 2.6 )
+
+# Modified by Lasse Oorni and Yao Wei Tjong for Urho3D
+
 SET( HEADER_PATH ../include/assimp )
 
 SET( COMPILER_HEADERS
@@ -480,7 +482,7 @@ if (ASSIMP_BUILD_IFC_IMPORTER)
   if (MSVC)
     set_source_files_properties(IFCReaderGen1.cpp IFCReaderGen2.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
   elseif(CMAKE_COMPILER_IS_MINGW)
-    set_source_files_properties(IFCReaderGen1.cpp IFCReaderGen2.cpp PROPERTIES COMPILE_FLAGS "-O2 -Wa,-mbig-obj")
+    set_source_files_properties(IFCReaderGen1.cpp IFCReaderGen2.cpp PROPERTIES COMPILE_FLAGS "-O2")   # Urho3D: Remove -Wa,-mbig-obj flag as some older MinGW version may not support it yet
   endif()
 endif (ASSIMP_BUILD_IFC_IMPORTER)
 
@@ -712,6 +714,18 @@ SET( Extra_SRCS
 )
 SOURCE_GROUP( Extra FILES ${Extra_SRCS})
 
+# Urho3D: Always build irrXML in-house
+SET( IrrXML_SRCS
+  irrXMLWrapper.h
+  ../contrib/irrXML/CXMLReaderImpl.h
+  ../contrib/irrXML/heapsort.h
+  ../contrib/irrXML/irrArray.h
+  ../contrib/irrXML/irrString.h
+  ../contrib/irrXML/irrTypes.h
+  ../contrib/irrXML/irrXML.cpp
+  ../contrib/irrXML/irrXML.h
+)
+SOURCE_GROUP( IrrXML FILES ${IrrXML_SRCS})
 
 SET( Clipper_SRCS
   ../contrib/clipper/clipper.hpp
@@ -748,8 +762,39 @@ SET( ziplib_SRCS
   ../contrib/zip/src/zip.c
   ../contrib/zip/src/zip.h
 )
-
 SOURCE_GROUP( ziplib FILES ${ziplib_SRCS} )
+
+# Urho3D: Always build zlib in-house
+SET( zlib_SRCS
+  ../contrib/zlib/adler32.c
+  ../contrib/zlib/compress.c
+  ../contrib/zlib/crc32.c
+  ../contrib/zlib/crc32.h
+  ../contrib/zlib/deflate.c
+  ../contrib/zlib/deflate.h
+  ../contrib/zlib/gzclose.c
+  ../contrib/zlib/gzguts.h
+  ../contrib/zlib/gzlib.c
+  ../contrib/zlib/gzread.c
+  ../contrib/zlib/gzwrite.c
+  ../contrib/zlib/infback.c
+  ../contrib/zlib/inffast.c
+  ../contrib/zlib/inffast.h
+  ../contrib/zlib/inffixed.h
+  ../contrib/zlib/inflate.c
+  ../contrib/zlib/inflate.h
+  ../contrib/zlib/inftrees.c
+  ../contrib/zlib/inftrees.h
+  ../contrib/zlib/trees.c
+  ../contrib/zlib/trees.h
+  ../contrib/zlib/uncompr.c
+  ${CMAKE_CURRENT_BINARY_DIR}/../contrib/zlib/zconf.h
+  ../contrib/zlib/zlib.h
+  ../contrib/zlib/zutil.c
+  ../contrib/zlib/zutil.h
+)
+SOURCE_GROUP( zlib FILES ${zlib_SRCS})
+INCLUDE_DIRECTORIES( ../contrib/zlib ${CMAKE_CURRENT_BINARY_DIR}/../contrib/zlib )
 
 SET ( openddl_parser_SRCS
   ../contrib/openddlparser/code/OpenDDLParser.cpp
@@ -804,13 +849,16 @@ SOURCE_GROUP( open3dgc FILES ${open3dgc_SRCS})
 # Check dependencies for glTF importer with Open3DGC-compression.
 # RT-extensions is used in "contrib/Open3DGC/o3dgcTimer.h" for collecting statistics. Pointed file
 # has implementation for different platforms: WIN32, __MACH__ and other ("else" block).
-FIND_PACKAGE(RT QUIET)
+# Urho3D: Only perform the dependency search on non-MSVC build
+IF (NOT MSVC)
+  FIND_PACKAGE(RT QUIET)
+ENDIF ()
 IF (RT_FOUND OR MSVC)
   SET( ASSIMP_IMPORTER_GLTF_USE_OPEN3DGC 1 )
   ADD_DEFINITIONS( -DASSIMP_IMPORTER_GLTF_USE_OPEN3DGC=1 )
 ELSE ()
   SET (open3dgc_SRCS "")
-  MESSAGE (INFO " RT-extension not found. glTF import/export will be built without Open3DGC-compression.")
+  MESSAGE (STATUS "RT-extension not found. glTF import/export will be built without Open3DGC-compression.")
   #!TODO: off course is better to remove statistics timers from o3dgc codec. Or propose to choose what to use.
 ENDIF ()
 
@@ -825,22 +873,18 @@ if(MSVC10)
   endif( VC10_STDINT_FIX )
 endif(MSVC10)
 
-ADD_DEFINITIONS( -DASSIMP_BUILD_DLL_EXPORT )
-
 if ( MSVC )
   ADD_DEFINITIONS( -D_SCL_SECURE_NO_WARNINGS )
   ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 endif ( MSVC )
 
-if (UNZIP_FOUND)
-  SET (unzip_compile_SRCS "")
-else (UNZIP_FOUND)
-  SET (unzip_compile_SRCS ${unzip_SRCS})
-  INCLUDE_DIRECTORIES( "../contrib/unzip/" )
-endif (UNZIP_FOUND)
+# Urho3D: Always build UNZIP in-house
+SET (unzip_compile_SRCS ${unzip_SRCS})
+INCLUDE_DIRECTORIES( "../contrib/unzip/" )
 
-MESSAGE(STATUS "Enabled formats:${ASSIMP_IMPORTERS_ENABLED}")
-MESSAGE(STATUS "Disabled formats:${ASSIMP_IMPORTERS_DISABLED}")
+# Urho3D: disable status prints
+#MESSAGE(STATUS "Enabled formats:${ASSIMP_IMPORTERS_ENABLED}")
+#MESSAGE(STATUS "Disabled formats:${ASSIMP_IMPORTERS_DISABLED}")
 
 SET( assimp_src
   # Assimp Files
@@ -863,6 +907,7 @@ SET( assimp_src
   ${openddl_parser_SRCS}
   ${open3dgc_SRCS}
   ${ziplib_SRCS}
+  ${zlib_SRCS}
   # Necessary to show the headers in the project when using the VC++ generator:
 
   ${PUBLIC_HEADERS}
@@ -872,7 +917,7 @@ SET( assimp_src
 ADD_DEFINITIONS( -DOPENDDLPARSER_BUILD )
 
 INCLUDE_DIRECTORIES(
-    ${IRRXML_INCLUDE_DIR}
+    ../contrib/irrXML
     ../contrib/openddlparser/include
 )
 
@@ -881,132 +926,37 @@ IF (ASSIMP_BUILD_NONFREE_C4D_IMPORTER)
   INCLUDE_DIRECTORIES(${C4D_INCLUDES})
 ENDIF (ASSIMP_BUILD_NONFREE_C4D_IMPORTER)
 
-ADD_LIBRARY( assimp ${assimp_src} )
+# Urho3D - commented out targets defined by the original CMakeLists.txt and use our own macro instead
 
-TARGET_LINK_LIBRARIES(assimp ${ZLIB_LIBRARIES} ${OPENDDL_PARSER_LIBRARIES} ${IRRXML_LIBRARY} )
+# Define target name
+set (TARGET_NAME Assimp)
 
-if(ANDROID AND ASSIMP_ANDROID_JNIIOSYSTEM)
-  set(ASSIMP_ANDROID_JNIIOSYSTEM_PATH port/AndroidJNI)
-  add_subdirectory(../${ASSIMP_ANDROID_JNIIOSYSTEM_PATH}/ ../${ASSIMP_ANDROID_JNIIOSYSTEM_PATH}/)
-  target_link_libraries(assimp android_jniiosystem)
-endif(ANDROID AND ASSIMP_ANDROID_JNIIOSYSTEM)
+# Define source files
+set (SOURCE_FILES ${assimp_src})
+
+# This target is added as dependency for AssetImporter target which may have clang-tidy setup at that scope
+# So, revert that here in order to exclude Assimp linter warnings/errors from ours
+reset_lint ()
+
+# Since we only build AssetImporter as a single-arch native tool, there is no point to build Assimp as universal binary library
+list (APPEND TARGET_PROPERTIES XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH YES)
+
+# Setup target
+setup_library ()
 
 IF (ASSIMP_BUILD_NONFREE_C4D_IMPORTER)
-  TARGET_LINK_LIBRARIES(assimp optimized ${C4D_RELEASE_LIBRARIES})
-  TARGET_LINK_LIBRARIES(assimp debug ${C4D_DEBUG_LIBRARIES})
-  TARGET_LINK_LIBRARIES(assimp ${C4D_EXTRA_LIBRARIES})
+  TARGET_LINK_LIBRARIES(Assimp optimized ${C4D_RELEASE_LIBRARIES})
+  TARGET_LINK_LIBRARIES(Assimp debug ${C4D_DEBUG_LIBRARIES})
+  TARGET_LINK_LIBRARIES(Assimp ${C4D_EXTRA_LIBRARIES})
 ENDIF (ASSIMP_BUILD_NONFREE_C4D_IMPORTER)
-
-if( MSVC )
-  # in order to prevent DLL hell, each of the DLLs have to be suffixed with the major version and msvc prefix
-  if( MSVC70 OR MSVC71 )
-    set(MSVC_PREFIX "vc70")
-  elseif( MSVC80 )
-    set(MSVC_PREFIX "vc80")
-  elseif( MSVC90 )
-    set(MSVC_PREFIX "vc90")
-  elseif( MSVC10 )
-    set(MSVC_PREFIX "vc100")
-  elseif( MSVC11 )
-    set(MSVC_PREFIX "vc110")
-  elseif( MSVC12 )
-    set(MSVC_PREFIX "vc120")
-  elseif( MSVC14 )
-    set(MSVC_PREFIX "vc140")
-  else()
-    set(MSVC_PREFIX "vc150")
-  endif()
-  set(LIBRARY_SUFFIX "${ASSIMP_LIBRARY_SUFFIX}-${MSVC_PREFIX}-mt" CACHE STRING "the suffix for the assimp windows library")
-endif()
-
-SET_TARGET_PROPERTIES( assimp PROPERTIES
-  VERSION ${ASSIMP_VERSION}
-  SOVERSION ${ASSIMP_SOVERSION} # use full version
-  OUTPUT_NAME assimp${LIBRARY_SUFFIX}
-)
-
-if (APPLE)
-  SET_TARGET_PROPERTIES( assimp PROPERTIES
-    INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${ASSIMP_LIB_INSTALL_DIR}"
-  )
-
-  if (BUILD_FRAMEWORK)
-    SET_TARGET_PROPERTIES( assimp PROPERTIES
-      FRAMEWORK TRUE
-      FRAMEWORK_VERSION C
-      MACOSX_FRAMEWORK_IDENTIFIER net.sf.assimp
-      PUBLIC_HEADER "${PUBLIC_HEADERS}"
-    )
-
-    # PUBLIC_HEADER option does not support directory structure creation
-    # add ./Compiler/*.h to assimp.framework via copy command
-    ADD_CUSTOM_COMMAND(TARGET assimp POST_BUILD 
-      COMMAND "${CMAKE_COMMAND}" -E copy_directory 
-         "../${HEADER_PATH}/Compiler"
-         assimp.framework/Headers/Compiler
-      COMMENT "Copying public ./Compiler/ header files to framework bundle's Headers/Compiler/")
-  endif(BUILD_FRAMEWORK)
-endif(APPLE)
-
-# Build against external unzip, or add ../contrib/unzip so
-# assimp can #include "unzip.h"
-if (UNZIP_FOUND)
-  INCLUDE_DIRECTORIES(${UNZIP_INCLUDE_DIRS})
-  TARGET_LINK_LIBRARIES(assimp ${UNZIP_LIBRARIES})
-else (UNZIP_FOUND)
-  INCLUDE_DIRECTORIES("../")
-endif (UNZIP_FOUND)
 
 # Add RT-extension library for glTF importer with Open3DGC-compression.
 IF (RT_FOUND AND ASSIMP_IMPORTER_GLTF_USE_OPEN3DGC)
-  TARGET_LINK_LIBRARIES(assimp ${RT_LIBRARY})
+  TARGET_LINK_LIBRARIES(Assimp ${RT_LIBRARY})
 ENDIF (RT_FOUND AND ASSIMP_IMPORTER_GLTF_USE_OPEN3DGC)
 
-INSTALL( TARGETS assimp
-  LIBRARY DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-  ARCHIVE DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-  RUNTIME DESTINATION ${ASSIMP_BIN_INSTALL_DIR}
-  FRAMEWORK DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-  COMPONENT ${LIBASSIMP_COMPONENT})
-INSTALL( FILES ${PUBLIC_HEADERS} DESTINATION ${ASSIMP_INCLUDE_INSTALL_DIR}/assimp COMPONENT assimp-dev)
-INSTALL( FILES ${COMPILER_HEADERS} DESTINATION ${ASSIMP_INCLUDE_INSTALL_DIR}/assimp/Compiler COMPONENT assimp-dev)
-
-if (ASSIMP_ANDROID_JNIIOSYSTEM)
-  INSTALL(FILES ${HEADER_PATH}/${ASSIMP_ANDROID_JNIIOSYSTEM_PATH}/AndroidJNIIOSystem.h
-    DESTINATION ${ASSIMP_INCLUDE_INSTALL_DIR}
-    COMPONENT assimp-dev)
-endif(ASSIMP_ANDROID_JNIIOSYSTEM)
-
-if(MSVC AND ASSIMP_INSTALL_PDB)
-  IF(CMAKE_GENERATOR MATCHES "^Visual Studio")
-    install(FILES ${Assimp_BINARY_DIR}/code/Debug/assimp${LIBRARY_SUFFIX}${CMAKE_DEBUG_POSTFIX}.pdb
-      DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-      CONFIGURATIONS Debug
-    )
-    install(FILES ${Assimp_BINARY_DIR}/code/RelWithDebInfo/assimp${LIBRARY_SUFFIX}.pdb
-      DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-      CONFIGURATIONS RelWithDebInfo
-    )
-  ELSE()
-    install(FILES ${Assimp_BINARY_DIR}/code/assimp${LIBRARY_SUFFIX}${CMAKE_DEBUG_POSTFIX}.pdb
-      DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-      CONFIGURATIONS Debug
-    )
-    install(FILES ${Assimp_BINARY_DIR}/code/assimp${LIBRARY_SUFFIX}.pdb
-      DESTINATION ${ASSIMP_LIB_INSTALL_DIR}
-      CONFIGURATIONS RelWithDebInfo
-    )
-  ENDIF()
+# When performing Xcode CI build suppress all the warnings for 3rd party libraries because there are just too many of them
+if (XCODE AND DEFINED ENV{CI})
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
 endif ()
-
-if (ASSIMP_COVERALLS)
-    include(Coveralls)
-
-    set(COVERAGE_SRCS ${assimp_src} ${TEST_SRCS} )
-
-    # Create the coveralls target.
-    coveralls_setup(
-        "${COVERAGE_SRCS}" # The source files.
-        ON                 # If we should upload.
-        "${PROJECT_SOURCE_DIR}/cmake-modules/") # (Optional) Alternate project cmake module path.
-endif()
